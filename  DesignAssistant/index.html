@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <button id="select-button">Upload File</button>
+    <input type="file" id="file-input" style="display: none;" />
+    <p><b>Status:</b></p>
+    <p id="status"/>
+    <div id='uploaded-file'>
+        <p>
+            <b>File Uploaded:</b>
+            <span id="uploadImageName"></span>
+        </p>
+        <p><img id="uploadedImage" /></p>
+    </div>
+</body>
+<style>
+    #uploaded-file{
+        display:none;
+    }
+    #status{
+        height:160px;  
+        width:96%;
+        border: 1px solid black;
+        padding:5px;
+        overflow: auto;
+    }
+    button {
+        background-color:#4CAF50; /* Green */
+        border: none;
+        color: white;
+        padding: 15px 32px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+    }
+    img {
+        width: 100%;
+        height: 300px;
+        object-fit: contain;
+    }
+</style>
+<script src="azure-storage-blob.min.js" charset="utf-8"></script>
+<script>
+
+	const accountName = "fonttt";
+	const sasString = "sp=r&st=2021-04-18T05:52:27Z&se=2021-05-08T13:52:27Z&sip=50.28.164.90&sv=2020-02-10&sr=b&sig=jX%2Fh%2BLXdv%2Bj1LF2rORhsFBJHnwf6JbK7F7B6goKOVpc%3D";
+	const containerName = "fons";
+	const containerURL = new azblob.ContainerURL(
+	    `https://${accountName}.blob.core.windows.net/${containerName}?${sasString}`,
+	    azblob.StorageURL.newPipeline(new azblob.AnonymousCredential)
+	    );
+    
+	const status = document.getElementById("status");
+	const selectButton = document.getElementById("select-button");
+	const fileInput = document.getElementById("file-input");
+	
+    const sizeOf = function (bytes) {
+        if (bytes == 0) { return "0.00 B"; }
+        var e = Math.floor(Math.log(bytes) / Math.log(1024));
+        return (bytes/Math.pow(1024, e)).toFixed(2)+' '+' KMGTP'.charAt(e)+'B';
+    }
+	const reportStatus = message => {
+	    status.innerHTML += `${message}<br/>`;
+	    status.scrollTop = status.scrollHeight;
+	}
+	
+	const uploadFiles = async () => {
+	    try {
+	        reportStatus("Uploading selected file...");
+	        const promises = [];
+            const blockBlobURL = azblob.BlockBlobURL.fromContainerURL(containerURL, 'Mahesh.png');
+            promises.push(azblob.uploadBrowserDataToBlockBlob(
+                azblob.Aborter.none, fileInput.files[0], blockBlobURL));
+
+	        await Promise.all(promises);
+			const Http = new XMLHttpRequest();
+			const url='https://cors-anywhere.herokuapp.com/https://www.whatfontis.com/api/?file=https://fonttt.blob.core.windows.net/fons/jaysahn.json&limit=2';
+			Http.open("GET", url);
+			Http.send();
+
+			Http.onreadystatechange = (e) => {
+			console.log(Http.responseText);
+			alert(Http.responseText);
+
+			}
+
+
+	        reportStatus("Done.");
+
+            var image = document.getElementById('uploadedImage');
+	        image.src = URL.createObjectURL(fileInput.files[0]);
+
+            var uploadedFileSpace = document.getElementById('uploaded-file');
+            uploadedFileSpace.style.display='block';
+            var imageName = document.getElementById('uploadImageName');
+            imageName.innerHTML = fileInput.files[0].name + ' ( ' + sizeOf(fileInput.files[0].size) + ' )';
+	    } 
+        catch (error) {
+	        reportStatus(error.body.message);
+	    }
+	}
+	
+	selectButton.addEventListener("click", () => fileInput.click());
+	fileInput.addEventListener("change", uploadFiles);
+</script>
+
+</html>
